@@ -20,7 +20,19 @@ from app.database import db
 router = APIRouter(prefix="/strings", tags=["strings"])
 
 def create_error_response(error_type: str, message: str, status_code: int, path: str, details=None):
-    """Helper to create error responses."""
+    """
+    Create a standardized error response for API endpoints.
+
+    Args:
+        error_type (str): The type of error (e.g., "BAD_REQUEST", "NOT_FOUND").
+        message (str): A human-readable error message.
+        status_code (int): The HTTP status code for the response.
+        path (str): The request path that caused the error.
+        details (dict, optional): Additional error details.
+
+    Returns:
+        JSONResponse: A FastAPI JSONResponse object with the error details.
+    """
     return JSONResponse(
         status_code=status_code,
         content={
@@ -34,7 +46,24 @@ def create_error_response(error_type: str, message: str, status_code: int, path:
 
 @router.post("", status_code=201, response_model=StringResponseSchema)
 async def create_string(request: Request, body: CreateStringRequest):
-    """Analyze and store a new string."""
+    """
+    Analyze and store a new string.
+
+    This endpoint accepts a string value, analyzes its properties (length, palindrome status,
+    unique characters, word count, SHA-256 hash, and character frequency), and stores it
+    in the database if it doesn't already exist.
+
+    Args:
+        request (Request): The incoming HTTP request object.
+        body (CreateStringRequest): The request body containing the string to analyze.
+
+    Returns:
+        dict: A dictionary representation of the created StringModel.
+
+    Raises:
+        HTTPException: Returns 409 if the string already exists, 400 if the value is empty,
+                       or 422 if the data type is invalid.
+    """
     try:
         # Check if string already exists
         if db.exists(body.value):
@@ -94,7 +123,26 @@ async def get_all_strings(
     word_count: Optional[int] = Query(None, ge=0),
     contains_character: Optional[str] = Query(None, min_length=1, max_length=1)
 ):
-    """Get all strings with optional filtering."""
+    """
+    Retrieve all stored strings with optional filtering.
+
+    This endpoint allows querying the database of analyzed strings with various filters
+    such as palindrome status, length constraints, word count, and character presence.
+
+    Args:
+        request (Request): The incoming HTTP request object.
+        is_palindrome (Optional[bool]): Filter for palindrome strings if True.
+        min_length (Optional[int]): Minimum string length (inclusive).
+        max_length (Optional[int]): Maximum string length (inclusive).
+        word_count (Optional[int]): Exact number of words in the string.
+        contains_character (Optional[str]): Single character that must be present in the string.
+
+    Returns:
+        dict: A dictionary containing the filtered list of strings, count, and applied filters.
+
+    Raises:
+        HTTPException: Returns 400 if filter combinations are invalid.
+    """
     # Build filters dictionary
     filters = {}
     if is_palindrome is not None:
@@ -134,7 +182,23 @@ async def filter_by_natural_language(
     request: Request,
     query: str = Query(..., min_length=1)
 ):
-    """Filter strings using natural language query."""
+    """
+    Filter strings using a natural language query.
+
+    This endpoint allows users to query the string database using human-readable language
+    instead of technical filters. The query is parsed and converted to appropriate filters.
+
+    Args:
+        request (Request): The incoming HTTP request object.
+        query (str): A natural language query describing the desired string properties.
+
+    Returns:
+        dict: A dictionary containing the filtered list of strings, count, original query,
+              and parsed filters.
+
+    Raises:
+        HTTPException: Returns 400 if the query cannot be parsed, or 422 if parsed filters conflict.
+    """
     # Parse the natural language query
     if not NaturalLanguageParser.can_parse(query):
         return create_error_response(
@@ -176,7 +240,22 @@ async def filter_by_natural_language(
 
 @router.get("/{string_value}", response_model=StringResponseSchema)
 async def get_string(request: Request, string_value: str):
-    """Get a specific string by its value."""
+    """
+    Retrieve a specific string by its value.
+
+    This endpoint fetches a single string from the database based on its exact value.
+    The string value is URL-decoded to handle special characters.
+
+    Args:
+        request (Request): The incoming HTTP request object.
+        string_value (str): The exact string value to retrieve (URL-encoded if necessary).
+
+    Returns:
+        dict: A dictionary representation of the StringModel if found.
+
+    Raises:
+        HTTPException: Returns 404 if the string does not exist in the system.
+    """
     # Decode URL-encoded string
     decoded_value = unquote(string_value)
     
@@ -195,7 +274,22 @@ async def get_string(request: Request, string_value: str):
 
 @router.delete("/{string_value}", status_code=204)
 async def delete_string(request: Request, string_value: str):
-    """Delete a string by its value."""
+    """
+    Delete a string by its value.
+
+    This endpoint removes a string from the database based on its exact value.
+    The string value is URL-decoded to handle special characters.
+
+    Args:
+        request (Request): The incoming HTTP request object.
+        string_value (str): The exact string value to delete (URL-encoded if necessary).
+
+    Returns:
+        JSONResponse: A 204 No Content response on successful deletion.
+
+    Raises:
+        HTTPException: Returns 404 if the string does not exist in the system.
+    """
     # Decode URL-encoded string
     decoded_value = unquote(string_value)
     

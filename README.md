@@ -54,7 +54,7 @@ project/
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/SamuelOshin
+git clone https://github.com/SamuelOshin/string_analyzer_api
 cd string-analysis-api
 ```
 
